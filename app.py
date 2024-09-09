@@ -61,7 +61,7 @@ def show_signup():
         else:
             user_exists = False
             try:
-                with open(user_file, mode='r', newline='') as file:
+                with open(user_file, mode='r', newline='', encoding='utf-8',) as file:
                     reader = csv.DictReader(file)
                     for row in reader:
                         if row['username'] == pseudo:
@@ -95,7 +95,7 @@ def show_login():
     if st.button('Se connecter', key="validation_connexion"):
         authenticated = False
         try:
-            with open('appuser.csv', mode='r', newline='') as file:
+            with open('appuser.csv', mode='r', newline='', encoding='utf-8',) as file:
                 reader = csv.DictReader(file)
                 for row in reader:
                     if row['username'] == pseudo and check_password(row['hashed_password'], password):
@@ -170,7 +170,7 @@ def menu():
 def chargement_preferences(username):
     user_preferences = []
     try:
-        with open(fichier_preference, mode='r', newline='') as file:
+        with open(fichier_preference, mode='r', newline='', encoding='utf-8',) as file:
             reader = csv.DictReader(file)
             for row in reader:
                 if row['username'] == username:
@@ -212,10 +212,8 @@ def save_interaction(username, video_id, video_data):
     
     # Limiter à 10 vidéos par utilisateur
     if len(user_interactions) >= 10:
-        # Supprimer la vidéo la plus ancienne
+       
         user_interactions.pop(0)
-
-    # Ajouter la nouvelle interaction
     new_interaction = {
         'username': username,
         'video_id': video_id,
