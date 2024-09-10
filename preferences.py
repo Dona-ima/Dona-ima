@@ -58,7 +58,7 @@ def save_preferences(preferences):
 def show_preferences_page():
     st.title("Sélectionnez vos préférences")
     if 'preferences' not in st.session_state:
-        st.session_state['preferences'] = {option: False for option in ["Musique", "Technologie", "Sport", "Education", "Actualites", "Science", "Cuisine", "Voyage", "Mode", "Beaute", "Sante", "Films", "Series", "Jeux Vidéo", "Documentaire", "Animation", "Comedie", "Politique", "Fitness", "Economie", "Developpement Personnel", "Entrepreneuriat"]}
+        st.session_state['preferences'] = {option: False for option in ["Musique", "Technologie", "Sport", "Education", "Actualites", "Science", "Cuisine", "Voyage", "Mode", "Beaute", "Sante", "Films", "Series", "Jeux Video", "Documentaire", "Animation", "Comedie", "Politique", "Fitness", "Economie", "Developpement Personnel", "Entrepreneuriat"]}
     
     # Afficher le formulaire de préférences
     for preference in st.session_state['preferences'].keys():
