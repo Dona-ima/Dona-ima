@@ -1,12 +1,27 @@
 import hashlib
 import streamlit as st
 import csv
+import chardet
 import pandas as pd
 from googleapiclient.discovery import build
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import random
 import os
+
+def detect_encoding(fichier):
+    
+    with open(fichier, mode='rb') as file:
+        resultat = chardet.detect(file.read())
+    return resultat['encoding']
+
+def lecture_fichier_csv(fichier, encodage):
+    try:
+        with open(fichier, mode='r', encoding=encodage, errors='replace') as file:
+            reader = csv.reader(file)
+    except Exception as e:
+        print(f"Error reading file with encoding {encodage}: {e}")
+
 
 def info_app():
     st.sidebar.title("Youtube 2.0")
@@ -94,22 +109,31 @@ def show_login():
 
     if st.button('Se connecter', key="validation_connexion"):
         authenticated = False
+        user_file = 'appuser.csv'
+        preferences_file = 'preferences.csv'
         try:
-            with open('appuser.csv', mode='r', newline='', encoding='utf-8',) as file:
+            if os.path.exists(user_file):
+                encoding = detect_encoding(user_file)
+                st.write(f"Encodage détecté : {encoding}")
+            else:
+                st.error(f"Le fichier {user_file} n'existe pas.")
+                return
+            with open(user_file, mode='r', newline='', encoding=encoding, errors='replace') as file:
                 reader = csv.DictReader(file)
                 for row in reader:
                     if row['username'] == pseudo and check_password(row['hashed_password'], password):
                         authenticated = True
                         st.success(f'Bienvenue {row["name"]}')
-                        preferences_file = 'preferences.csv'
                         preferences_exists = False
                         if os.path.exists(preferences_file):
-                            with open(preferences_file, mode='r', newline='') as file:
-                                reader = csv.DictReader(file)
-                                for pref_row in reader:
+                            pref_encoding = detect_encoding(preferences_file)
+                            with open(preferences_file, mode='r', newline='', encoding=pref_encoding, errors='replace') as pref_file:
+                                pref_reader = csv.DictReader(pref_file)
+                                for pref_row in pref_reader:
                                     if pref_row['username'] == pseudo:
                                         preferences_exists = True
                                         break
+                        
                         
                         # Afficher la page des préférences seulement si elles ne sont pas encore enregistrées
                         if not preferences_exists:
@@ -170,7 +194,8 @@ def menu():
 def chargement_preferences(username):
     user_preferences = []
     try:
-        with open(fichier_preference, mode='r', newline='', encoding='utf-8',) as file:
+        pref_encoding = detect_encoding(fichier_preference)
+        with open(fichier_preference, mode='r', newline='', encoding=pref_encoding, errors='replace') as file:
             reader = csv.DictReader(file)
             for row in reader:
                 if row['username'] == username:
@@ -184,7 +209,8 @@ def chargement_preferences(username):
 def chargement_interactions(username):
     interactions = []
     try:
-        with open(fichier_interaction, mode='r', newline='', encoding='utf-8') as file:
+        interaction_encoding = detect_encoding(fichier_interaction)
+        with open(fichier_interaction, mode='r', newline='', encoding=interaction_encoding, errors='replace') as file:
             reader = csv.DictReader(file)
             for row in reader:
                 if row['username'] == username:
@@ -197,45 +223,44 @@ def chargement_interactions(username):
 
 def save_interaction(username, video_id, video_data):
     interactions = []
-    
+
     # Charger les interactions existantes
     try:
-        with open(fichier_interaction, mode='r', newline='', encoding='utf-8') as file:
+        interaction_encoding = detect_encoding(fichier_interaction)
+        with open(fichier_interaction, mode='r', newline='', encoding=interaction_encoding) as file:
             reader = csv.DictReader(file)
-            for row in reader:
-                interactions.append(row)
+            interactions = list(reader)  # Charger toutes les interactions
     except FileNotFoundError:
         pass
-    
+
     # Filtrer les interactions de l'utilisateur
     user_interactions = [row for row in interactions if row['username'] == username]
-    
+
     # Limiter à 10 vidéos par utilisateur
     if len(user_interactions) >= 10:
-       
         user_interactions.pop(0)
+
+    # Nouvelle interaction
     new_interaction = {
         'username': username,
         'video_id': video_id,
         'info_video': video_data
     }
-    print(new_interaction)
+
     user_interactions.append(new_interaction)
-    
+
+    # Mettre à jour la liste des interactions avec celles de l'utilisateur
+    interactions = [row for row in interactions if row['username'] != username] + user_interactions
+
     # Réécrire toutes les interactions dans le fichier CSV
-    with open(fichier_interaction, mode='w', newline='', encoding='utf-8') as file:
+    with open(fichier_interaction, mode='w', newline='', encoding=interaction_encoding) as file:
         fieldnames = ['username', 'video_id', 'info_video']
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         
-        # Réécrire les interactions restantes et celles des autres utilisateurs
-        for row in interactions:
-            if row['username'] != username:
-                writer.writerow(row)
-        
-        # Réécrire les interactions mises à jour de l'utilisateur
-        for interaction in user_interactions:
+        for interaction in interactions:
             writer.writerow(interaction)
+
 
 # Fonction pour aller chercher les vidéos sur youtube
 def search_youtube_videos(query, max_results=10):
@@ -295,6 +320,7 @@ def accueil():
                         like_key = f"like_button_{row['video_id']}"
                         
                         if st.button("Liker 👍 ", key=like_key):
+                            st.sav
                             save_interaction(pseudonyme(), row['video_id'], row['full_text'])
                             like = True
                             
@@ -383,6 +409,7 @@ def accueil():
                 with col1:
                     like_key = f"like_button_{row['video_id']}"
                     if st.button("Liker 👍 ", key=like_key):
+                        st.session_state.page = 'confirmation_like'
                         save_interaction(pseudonyme(), row['video_id'], row['full_text'])
                         like = True
 
@@ -418,6 +445,8 @@ elif st.session_state.page == 'login':
 elif st.session_state.page == 'preferences':
     import preferences
     preferences.show_preferences_page()
+elif st.session_state.page == 'confirmation_like':
+    show_home()
 elif st.session_state.page == 'accueil':
     accueil()
 
